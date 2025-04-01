@@ -35,8 +35,8 @@ def rotate_direction_geodetic_to_geocentric(direction, gdlat, gdlon, alt=0):
 
     return np.array(
         [
-            direction[0]*_cos + direction[1] * _sin,
-            -direction[0]*_sin + direction[1] * _cos,
-            direction[2]
+            direction[0] * _cos + direction[1] * _sin,
+            -direction[0] * _sin + direction[1] * _cos,
+            direction[2] * np.ones_like(gdlat)
         ]
     )
