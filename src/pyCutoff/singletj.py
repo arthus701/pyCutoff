@@ -4,6 +4,7 @@ from tqdm import tqdm
 
 from pymagglobal.utils import REARTH
 
+from .rk4 import RK4_step
 from .utils import (
     geodetic_to_geocentric,
     rotate_direction_geodetic_to_geocentric,
@@ -13,17 +14,11 @@ from .constants import (
     ANUC,
     EMCSQ,
     ZCHARGE,
-    transformer,
+    ERADPL,
+    ERECSQ,
+    DISOUT,
+    RHT,
 )
-
-# Geoid definition
-ERPLSQ = (transformer.source_crs.ellipsoid.semi_minor_metre / 1e3)**2
-EREQSQ = (transformer.source_crs.ellipsoid.semi_major_metre / 1e3)**2
-ERADPL = np.sqrt(ERPLSQ)
-ERECSQ = EREQSQ / ERPLSQ - 1.0
-
-DISOUT = 25.0               # Earth's radii; outer boundary
-RHT = 20.0                  # km; inner boundary
 
 
 def singletj(
@@ -33,7 +28,12 @@ def singletj(
     magneticField,
     direction_gd=np.array([1, 0, 0]),
 ):
-    def rhs(y, EOMC):
+    TENG = np.sqrt(
+        (rigidity * ZCHARGE)**2 + (ANUC * EMCSQ)**2
+    )
+    EOMC = -8987.566297 * ZCHARGE / TENG
+
+    def rhs(y):
         # B_r, B_t, B_p
         b = magneticField(y[:3])
 
@@ -57,10 +57,6 @@ def singletj(
 
         return res
 
-    TENG = np.sqrt(
-        (rigidity * ZCHARGE)**2 + (ANUC * EMCSQ)**2
-    )
-    EOMC = -8987.566297 * ZCHARGE / TENG
     BETAST = 2
 
     zed = 0
@@ -88,7 +84,7 @@ def singletj(
     beta_factor = np.sqrt(1. - 1. / gamma_factor**2)
 
     edif = beta_factor * 1.0e-4
-    if (edif < 1.0-5):
+    if (edif < 1.0e-5):
         edif = 1.0e-5
     if (beta_factor < 0.1):
         edif = 1.0e-4
@@ -115,16 +111,6 @@ def singletj(
     h_max = 1 / C / beta_factor
     # disck = DISOUT - 1.1 * h_max * C * beta_factor
     kbf = 0
-
-    # One RK4 step
-    def RK4_step(y, h):
-        k1 = rhs(y, EOMC)
-        k2 = rhs(y + h / 2 * k1, EOMC)
-        k3 = rhs(y + h / 2 * k2, EOMC)
-        k4 = rhs(y + h * k3, EOMC)
-
-        y_dot = (k1 + 2 * k2 + 2 * k3 + k4) / 6
-        return y + h * y_dot
 
     # Checks go here
     def check_RK4_step():
@@ -170,8 +156,8 @@ def singletj(
             h = h_ck
 
         # perform RK4 step
-        y_new = RK4_step(y, h)
-        acc = rhs(y_new, EOMC)[3:]
+        y_new = RK4_step(y, h, rhs)
+        acc = rhs(y_new)[3:]
         B = magneticField(y)
 
         acc_abs = np.sqrt(np.sum(acc**2))
