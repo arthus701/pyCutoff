@@ -1,14 +1,43 @@
 import unittest
 from pathlib import Path
 
+import numpy as np
+
+from scipy.special import factorial, factorial2
+
+from pymagglobal.utils import lm2i, lmax2N
+
 from pyCutoff.singletj import singletj
+from pyCutoff.magnetic_field import MagneticField
 
 path = str(Path(__file__).parent) + '/'
+
+l_max = 10
+
+coeffs = np.zeros(lmax2N(l_max))
+with open(path + 'dat/coeffs.txt') as fh:
+    for line in fh.readlines():
+        ell, emm, val = np.fromstring(line, dtype=float, sep=' ')
+        ell = int(ell)
+        emm = int(emm)
+        # Conversion factor for Gauss normalization to Schmidt-semi
+        # see for example https://ntrs.nasa.gov/api/citations/19900004113/
+        # downloads/19900004113.pdf Page 272
+        fac = (
+            np.sqrt(
+                (2 - (emm == 0)) * factorial(ell - emm)
+                / (factorial(ell + emm))
+            ) * factorial2(2 * ell - 1) / factorial(ell - emm)
+        )
+        coeffs[lm2i(ell, emm)] = val / fac
+
+
+magField = MagneticField(coeffs)
 
 
 class TestLines(unittest.TestCase):
     def test_lines(self):
-        with open(path + 'TAPE8.TXT', 'r') as fh:
+        with open(path + 'dat/TAPE8.TXT', 'r') as fh:
             it = 0
             for line in fh.readlines():
                 values = line.split()
@@ -16,7 +45,7 @@ class TestLines(unittest.TestCase):
                 gdlon = float(values[2])
                 rigidity = float(values[5])
 
-                res = singletj(gdlat, gdlon, rigidity)
+                res = singletj(gdlat, gdlon, rigidity, magField)
 
                 self.assertTrue(round(res[1], 2) == float(values[1]))
                 self.assertTrue(1 - res[7] == int(values[9]))

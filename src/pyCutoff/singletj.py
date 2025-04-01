@@ -7,51 +7,51 @@ from pymagglobal.utils import REARTH
 from .utils import (
     geodetic_to_geocentric,
     rotate_direction_geodetic_to_geocentric,
-    get_magnetic_field,
+)
+from .constants import (
+    C,
+    ANUC,
+    EMCSQ,
+    ZCHARGE,
+    ERADPL,
+    ERECSQ,
 )
 
-# Oxgen-16
-ANUC = 16
-ZCHARGE = 8
-# Mass equivalent energy for one atomic mass unit
-EMCSQ = 0.931141            # GeV
-C = 2.99792458E5 / REARTH   # Speed of light per Earth's radius
 DISOUT = 25.0               # Earth's radii; outer boundary
 RHT = 20.0                  # km; inner boundary
 
-# Geoid definition; XXX unify with proj transformer
-ERPLSQ = 40408585.0
-EREQSQ = 40680925.0
-ERADPL = np.sqrt(ERPLSQ)
-ERECSQ = EREQSQ / ERPLSQ - 1.0
 
+def singletj(
+    gdlat,
+    gdlon,
+    rigidity,
+    magneticField,
+    direction_gd=np.array([1, 0, 0]),
+):
+    def rhs(y, EOMC):
+        # B_r, B_t, B_p
+        b = magneticField(y[:3])
 
-def rhs(y, EOMC):
-    # B_r, B_t, B_p
-    b = get_magnetic_field(y[:3])
+        res = np.array([
+            C * y[3],
+            C * y[4] / y[0],
+            C * y[5] / y[0] / np.sin(y[1]),
+            EOMC * (y[4] * b[2] - y[5] * b[1])
+            + C * (y[4]**2 + y[5]**2) / y[0],
+            EOMC * (y[5] * b[0] - y[3] * b[2])
+            - C * (
+                (y[3] * y[4]) / y[0]
+                - y[5]**2 / y[0] / np.tan(y[1])
+            ),
+            EOMC * (y[3] * b[1] - y[4] * b[0])
+            - C * (
+                (y[3] * y[5]) / y[0]
+                + y[4] * y[5] / y[0] / np.tan(y[1])
+            ),
+        ])
 
-    res = np.array([
-        C * y[3],
-        C * y[4] / y[0],
-        C * y[5] / y[0] / np.sin(y[1]),
-        EOMC * (y[4] * b[2] - y[5] * b[1])
-        + C * (y[4]**2 + y[5]**2) / y[0],
-        EOMC * (y[5] * b[0] - y[3] * b[2])
-        - C * (
-            (y[3] * y[4]) / y[0]
-            - y[5]**2 / y[0] / np.tan(y[1])
-        ),
-        EOMC * (y[3] * b[1] - y[4] * b[0])
-        - C * (
-            (y[3] * y[5]) / y[0]
-            + y[4] * y[5] / y[0] / np.tan(y[1])
-        ),
-    ])
+        return res
 
-    return res
-
-
-def singletj(gdlat, gdlon, rigidity, direction_gd=np.array([1, 0, 0])):
     TENG = np.sqrt(
         (rigidity * ZCHARGE)**2 + (ANUC * EMCSQ)**2
     )
@@ -148,7 +148,7 @@ def singletj(gdlat, gdlon, rigidity, direction_gd=np.array([1, 0, 0])):
     acc_abs_old = np.nan
     for it in tqdm(range(5000), disable=True):
         # XXX this should be retrieved from the rhs!
-        B = get_magnetic_field(y[:3])
+        B = magneticField(y[:3])
         B_mag = np.sqrt(np.sum(B**2))
         hb = 1.6e-5 * rigidity / (B_mag * beta_factor)
         h = hb / BETAST
@@ -167,7 +167,7 @@ def singletj(gdlat, gdlon, rigidity, direction_gd=np.array([1, 0, 0])):
         # perform RK4 step
         y_new = RK4_step(y, h)
         acc = rhs(y_new, EOMC)[3:]
-        B = get_magnetic_field(y)
+        B = magneticField(y)
 
         acc_abs = np.sqrt(np.sum(acc**2))
         h_cng = h * 1.2
