@@ -165,19 +165,10 @@ def singletj(gdlat, gdlon, rigidity, direction_gd=np.array([1, 0, 0])):
             h = h_ck
 
         # perform RK4 step
-        # print(f'Y    {np.rad2deg(y[1]):.14e}    {np.rad2deg(y[2]):.14e}    {y[0] * REARTH:.14e}')
         y_new = RK4_step(y, h)
         acc = rhs(y_new, EOMC)[3:]
         B = get_magnetic_field(y)
-        # print(f'B    {B[0]:.14e}    {B[1]:.14e}    {B[2]:.14e}')
-        # print(f'F    {acc[0]:.4e}    {acc[1]:.4e}    {acc[2]:.4e}')
-        # print(f'F_1  {f[0]:.4e}    {f[1]:.4e}    {f[2]:.4e}')
-        # print(f'F_2  {f[3]:.4e}    {f[4]:.4e}    {f[5]:.4e}')
-        # print(f'Y_n  {np.rad2deg(y_new[1]):.14e}    {np.rad2deg(y_new[2]):.14e}    {y_new[0] * REARTH:.14e}')
-        # print(f'Y    {np.rad2deg(y_new[1]):.4e}    {np.rad2deg(y_new[2]):.4e}    {y_new[0] * REARTH:.4e}')
-        # print(f'V    {y_new[3]:.4e}    {y_new[4]:.4e}    {y_new[5]:.4e}')
-        # print(f'B    {B[0]:.4e}    {B[1]:.4e}    {B[2]:.4e}')
-        # print(f'F    {acc[0]:.4e}    {acc[1]:.4e}    {acc[2]:.4e}')
+
         acc_abs = np.sqrt(np.sum(acc**2))
         h_cng = h * 1.2
         h_ck = h_cng
@@ -196,10 +187,6 @@ def singletj(gdlat, gdlon, rigidity, direction_gd=np.array([1, 0, 0])):
                 # XXX dirty hack; is a for loop faster?
                 p = np.sum(np.abs(acc / acc_old) > 3)
                 h_ck = h_ck / (1.0 + ahlt)**p
-
-            # for it in range(3):
-            #     if np.abs(acc_old[it]) > 3:
-            #         print(n_steps+1, it, np.abs(acc_old[it]))
 
         if DISOUT < y_new[0]:
             if (
@@ -224,7 +211,7 @@ def singletj(gdlat, gdlon, rigidity, direction_gd=np.array([1, 0, 0])):
             if (y_new[0] < (RHT + grnd_km) / REARTH):
                 irslt = -1
                 break
-        # print(f'{n_steps+1:d}    {h:.4e}   {y_new[0]:.8f}')
+
         # increment
         tau += h
         n_steps += 1
