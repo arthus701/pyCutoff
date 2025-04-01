@@ -13,9 +13,14 @@ from .constants import (
     ANUC,
     EMCSQ,
     ZCHARGE,
-    ERADPL,
-    ERECSQ,
+    transformer,
 )
+
+# Geoid definition
+ERPLSQ = (transformer.source_crs.ellipsoid.semi_minor_metre / 1e3)**2
+EREQSQ = (transformer.source_crs.ellipsoid.semi_major_metre / 1e3)**2
+ERADPL = np.sqrt(ERPLSQ)
+ERECSQ = EREQSQ / ERPLSQ - 1.0
 
 DISOUT = 25.0               # Earth's radii; outer boundary
 RHT = 20.0                  # km; inner boundary
@@ -201,7 +206,7 @@ def singletj(
                 h_cng /= 2.0
                 continue
         if 4 < it:
-            # XXX Unify with proj transformer
+            # XXX Use transformer?
             grnd_km = (
                 ERADPL / np.sqrt(
                     1.0 - ERECSQ * np.sin(y_new[1])**2

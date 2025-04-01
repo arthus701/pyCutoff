@@ -1,20 +1,10 @@
-import numpy as np
-
-import pyproj
-
 from pathlib import Path
 
-path = str(Path(__file__).parent) + '/'
+import numpy as np
 
-# XXX Replace by WGS84 once checks are complete
-transformer = pyproj.Transformer.from_crs(
-    pyproj.CRS.from_proj4(
-        "+proj=latlon +a=6378160.001128852 +b=6356774.732519629"
-    ),
-    pyproj.CRS.from_proj4(
-        "+proj=geocent +a=6378160.001128852 +b=6356774.732519629"
-    ),
-)
+from .constants import transformer
+
+path = str(Path(__file__).parent) + '/'
 
 
 def geodetic_to_geocentric(gdlat, gdlon, alt=0):

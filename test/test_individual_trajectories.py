@@ -3,14 +3,27 @@ from pathlib import Path
 
 import numpy as np
 
+import pyproj
 from scipy.special import factorial, factorial2
 
 from pymagglobal.utils import lm2i, lmax2N
 
-from pyCutoff.singletj import singletj
+from pyCutoff import constants
+# Monkey patch older Ellipsoid
+constants.transformer = pyproj.Transformer.from_crs(
+    pyproj.CRS.from_proj4(
+        "+proj=latlon +a=6378160.001128852 +b=6356774.732519629"
+    ),
+    pyproj.CRS.from_proj4(
+        "+proj=geocent +a=6378160.001128852 +b=6356774.732519629"
+    ),
+)
+
 from pyCutoff.magnetic_field import MagneticField
+from pyCutoff.singletj import singletj
 
 path = str(Path(__file__).parent) + '/'
+
 
 l_max = 10
 
@@ -45,7 +58,12 @@ class TestLines(unittest.TestCase):
                 gdlon = float(values[2])
                 rigidity = float(values[5])
 
-                res = singletj(gdlat, gdlon, rigidity, magField)
+                res = singletj(
+                    gdlat,
+                    gdlon,
+                    rigidity,
+                    magField,
+                )
 
                 self.assertTrue(round(res[1], 2) == float(values[1]))
                 self.assertTrue(1 - res[7] == int(values[9]))
